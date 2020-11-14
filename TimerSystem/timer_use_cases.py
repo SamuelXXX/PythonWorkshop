@@ -1,5 +1,5 @@
 import time
-from timer import Timer
+from TimerSystem.timer import Timer
 
 class TimerUseCase1(object):
 	timer_core=None
