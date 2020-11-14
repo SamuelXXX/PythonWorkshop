@@ -3,6 +3,12 @@ class Timer(object):
 	__handler_dict = None
 
 	def register_timer_func(self, name, func):
+		"""
+		注册一个Timer function函数，将名称和函数绑定到一个字典当中
+		:param name: Timer的名称
+		:param func: Timer的函数体
+		:return:
+		"""
 		if self.__handler_dict is None:
 			self.__handler_dict = {}
 		self.__handler_dict[name] = func
@@ -21,23 +27,33 @@ class Timer(object):
 	__current_time = None # 保证先写后读
 	# 都是只在process中使用的变量，用来保存在timer中创建的和timer相关的命令
 	__cancelled_timers = None
-	__added_timers = None
 	__force_clear_all_timers = False
 
 	def set_time(self, time):
+		"""
+		暂时设置一个时间
+		通常在Timer函数体外部调用start_timer时调用
+		:param time:
+		:return:
+		"""
 		self.__current_time = time
 
 	def process_all_timers(self, time):
+		"""
+		Timer主处理函数
+		:param time: 当前时间
+		:return:
+		"""
 		if self.running_timers is None:
 			return
 
 		self.__current_time = time
 
-		self.__added_timers = {}
+		self.__reset_temp_added_timers()
 		self.__cancelled_timers = []
 		self.__force_clear_all_timers = False
 
-		for index, info in self.running_timers.items():
+		for index, info in self.__running_timers_items():
 			func_name=info[0]
 			tick_time=info[1]
 			func=self.__handler_dict[func_name]
@@ -55,17 +71,48 @@ class Timer(object):
 					info[1] = self.__current_time + ret
 
 		if self.__force_clear_all_timers:
-			self.running_timers={}
+			self.__reset_running_timers()
 
-		self.running_timers.update(self.__added_timers) # 将执行中创建的timer
-		for i in self.__cancelled_timers:
-			if i in self.running_timers:
-				del self.running_timers[i]
+		self.__update_running_timers() # 将执行中创建的timer加入
+		for i in self.__cancelled_timers: # 将执行过程中停用的timer全部停用掉
+			self.__del_running_timer(i)
 		self.__current_time = None
 	# endregion
 
-	# region Timer Management
+	# region __Internal_Methods
+	# 考虑到内置字典容器的不保序特性，running_timers可能用别的自定义字典容器替代，所以要将这里集中封装下接口
+	# __added_timers同样也是字典类容器，需要使用同样的方式对待
 	running_timers = None
+	__added_timers = None # 只在主Tick中使用的暂存变量，并且是先清空再使用
+	def __reset_running_timers(self):
+		self.running_timers={}
+
+	def __add_running_timer(self, timer_id, name, time):
+		if self.running_timers is None:
+			self.__reset_running_timers()
+		self.running_timers[timer_id] = [name, time]
+
+	def __del_running_timer(self, timer_id):
+		if self.__contain_running_timers(timer_id):
+			del self.running_timers[timer_id]
+
+	def __update_running_timers(self):
+		self.running_timers.update(self.__added_timers)
+
+	def __contain_running_timers(self, timer_id):
+		return timer_id in self.running_timers
+
+	def __running_timers_items(self):
+		return self.running_timers.items()
+
+	def __reset_temp_added_timers(self):
+		self.__added_timers = {}
+
+	def __add_temp_added_timers(self, timer_id, name, time):
+		self.__added_timers[timer_id] = [name, time]
+	# endregion
+
+	# region Timer Management
 	assigned_timer_id = 0
 
 	def start_timer(self, name, first_tick_delay):
@@ -78,36 +125,44 @@ class Timer(object):
 		:return:
 		"""
 		if self.running_timers is None:
-			self.running_timers = {}
+			self.__reset_running_timers()
 
 		assert name in self.__handler_dict
 
+		timer_id = self.assigned_timer_id
 		if self.__in_timer_context:
-			timer_id = self.assigned_timer_id
-			self.__added_timers[timer_id] = [name, self.__current_time + first_tick_delay]
+			self.__add_temp_added_timers(timer_id, name, self.__current_time + first_tick_delay)
 			self.assigned_timer_id += 1
 			return timer_id
 
-		timer_id=self.assigned_timer_id
-		self.running_timers[timer_id] = [name, self.__current_time + first_tick_delay]
+		self.__add_running_timer(timer_id, name, self.__current_time + first_tick_delay)
 		self.assigned_timer_id+=1
 		return timer_id
 
 	def stop_timer(self, timer_id):
+		"""
+		根据Timer ID停用一个Timer
+		:param timer_id:
+		:return:
+		"""
 		if self.__in_timer_context:
 			self.__cancelled_timers.append(timer_id)
 			return
 
-		if self.running_timers is None or timer_id not in self.running_timers:
+		if self.running_timers is None or not self.__contain_running_timers(timer_id):
 			return
 
-		del self.running_timers[timer_id]
+		self.__del_running_timer(timer_id)
 
 	def stop_all_timers(self):
+		"""
+		停止所有正在运行的Timer
+		:return:
+		"""
 		if self.__in_timer_context:
 			self.__force_clear_all_timers = True
-			self.__added_timers = {} # 将在timer中创建的新的timer也清空掉
+			self.__reset_temp_added_timers() # 将在timer中创建的新的timer也清空掉
 			return
 
-		self.running_timers = {}
+		self.__reset_running_timers()
 		# endregion
