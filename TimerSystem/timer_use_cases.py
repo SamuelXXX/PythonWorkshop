@@ -25,6 +25,7 @@ class TimerUseCase1(object):
 		print("timer func1")
 		if self.count==5:
 			self.timer_core.start_timer("func2",2.5)
+			return None
 		return 1
 
 	def timer_func2(self):

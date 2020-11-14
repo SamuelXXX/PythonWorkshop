@@ -53,7 +53,10 @@ class Timer(object):
 		self.__cancelled_timers = []
 		self.__force_clear_all_timers = False
 
-		for index, info in self.__running_timers_items():
+		for timer_id, info in self.__running_timers_items():
+			if timer_id in self.__cancelled_timers: # 已经删除的timers就不用继续处理
+				continue
+
 			func_name=info[0]
 			tick_time=info[1]
 			func=self.__handler_dict[func_name]
@@ -66,7 +69,7 @@ class Timer(object):
 					break
 
 				if ret is None:
-					self.__cancelled_timers.append(index)
+					self.__cancelled_timers.append(timer_id)
 				else:
 					info[1] = self.__current_time + ret
 
