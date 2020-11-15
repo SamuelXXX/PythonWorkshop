@@ -36,6 +36,8 @@ class Timer(object):
 		:param time:
 		:return:
 		"""
+		if self.__current_time is not None: # 只在外部调用，不能再Timer Func内部调用
+			return
 		self.__current_time = time
 
 	def process_all_timers(self, time):
