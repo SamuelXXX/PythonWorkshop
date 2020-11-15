@@ -125,7 +125,7 @@ class Timer(object):
 		开启一个Timer
 		在Timer函数内部使用没有任何限制
 		在Timer函数之外使用的话，使用前一定要先调用set_time来确定一个基准时间，否则会报错
-		:param name:
+		:param name: Timer的名称
 		:param first_tick_delay:
 		:return:
 		"""
@@ -158,6 +158,16 @@ class Timer(object):
 			return
 
 		self.__del_running_timer(timer_id)
+
+	def stop_timers_by_name(self,name):
+		"""
+		根据Timer的名称停用Timer
+		:param name: 被停用的Timers的名称
+		:return:
+		"""
+		timer_id_set=[timer_id for timer_id,info in self.__running_timers_items() if info[0] == name]
+		for timer_id in timer_id_set:
+			self.stop_timer(timer_id)
 
 	def stop_all_timers(self):
 		"""
