@@ -46,7 +46,7 @@ class Timer(object):
 		:param time: 当前时间
 		:return:
 		"""
-		if self.running_timers is None:
+		if self.running_timers is None or self.__running_timers_is_empty():
 			return
 
 		self.__current_time = time
@@ -109,6 +109,9 @@ class Timer(object):
 
 	def __running_timers_items(self):
 		return self.running_timers.items()
+
+	def __running_timers_is_empty(self):
+		return len(self.running_timers) == 0
 
 	def __reset_temp_added_timers(self):
 		self.__added_timers = {}
